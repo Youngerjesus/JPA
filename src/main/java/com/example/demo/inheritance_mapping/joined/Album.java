@@ -1,4 +1,4 @@
-package com.example.demo.inheritance_mapping;
+package com.example.demo.inheritance_mapping.joined;
 
 import javax.persistence.Entity;
 

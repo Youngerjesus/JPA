@@ -121,9 +121,137 @@ Flush 란 영속성 컨택스트의 변경 내용을 DB에 반영하는 걸 말�
 
   - 서브 타입에 있는 컬럼들을 모두 한 테이블에 다 넣는다. 구별 할 떈 타입 칼럼을 통해 구별한다. 
   
--  
+  - 단순화된 구조 떄문에 조회 성능이 빠르지만 null 인 칼럼이 많아서 테이블 크기가 커지고 정규화 문제가 생길 수 있다. 
+  
+- TABLE PER CLASS 전략 
 
+  - 구현 클래스마다 테이블을 만드는 전략이다. 직접 사용하는 건 권장하지 않는다. 
+
+
+##### Example
+```java
+
+@Entity
+@Inheritance(strategy = Inheritance.JOINED)
+@DiscriminatorColumn
+public abstract class Item{
+    @Id @GeneratedValue
+    private Long id;
+    
+    private String name;
+    private int price;
+    private int stockQuantity;
+}
+
+@Entity
+@DiscriminatorValue(value = "Album")
+public class Album extends Item {
+    private String artist;
+    private String etc;
+}
+
+@Entity
+@DiscriminatorValue(value = "Book")
+public class Book extends Item {
+    private String author;
+    private String isbn;
+}
+
+@Entity
+@DiscriminatorValue(value = "Movie")
+public class Movie extends Item {
+    private String director;
+    private String actor;
+}
+```
+
+- `@Inheritance` 에노테이션에 설정하는 전략에 따라 상속 매핑 전략을 선택할 수 있다. 
+
+- `@DiscriminatorColumn` 을 부모 Entity 에 설정해서 어떤 자식 Entity 를 나타내는지 알 수 있도록 하는 `DTYPE` 을 설정할 수 있다. 
+
+***
+
+## @MappedSuperclass
+
+공통적인 매핑 정보가 필요할 때 부모 클래스에 이를 넣고 자식 클래스는 이 정보를 가져와서 사용하도록 쓸 수 있다.  
+
+##### Example
+
+````java
+public class BaseEntity{
+    private String createdBy; 
+    private LocalDateTime createdDate;
+    private String lastModifiedBy; 
+    private LocalDateTime lastModifiedDate;   
+}
+
+@Entity
+public class Member extends BaseEntity{...}
+````
 
 ## 프록시와 연관관계 
 
+JPA의 즉시 로딩과 지연 로딩을 이해하기 위해서는 프록시를 이해해야 한다. 
+
+#### 프록시 
+
+프록시 클래스는 실제 클래스를 상속 받아서 만들어지며 겉 모양이 같다. 
+
+다만 실제 값이 필요할 때까지 DB 조회를 미루는 방식으로 한 Entity 와 연관된 다른 Entity 를 모두 가져올 필요가 없을 때 프록시를 사용한다. 
+
+프록시 객체는 실제 객체의 참조를 보관해서 애플리케이션에서 프록시 객체를 호출하면 프록시 객체는 실제 객체의 메소드를 호출한다. 
+
+아래는 프록시 객체를 활용한 예제다.
+
+```java
+Team team = new Team();
+team.setName("teamA");
+
+Member member = new Member();
+member.setName("memberA");
+member.setTeam(team);
+
+em.persist(team);
+em.persist(member);
+
+em.flush();		// SQL 보냄
+em.clear();		// 영속성 Context 1차 캐시 초기화
+
+Member referMember = em.getReference(Member.class, member.getId());		// 프록시 객체 가져옴
+System.out.println("referMember = " + referMember.getId() + ": " + referMember.getName());
+```
+
+- `em.getReference()` 를 통해서 프록시 객체를 가지고온다. 
+
+- `referMember.getId()` 는 기존에 메모리에 있던 값이기 때문에 DB에 조회를 날리지 않는다. 
+
+- `referMember.getName()` 을 실행할 때 실제 DB에서 값을 가져온다. 
+
+
+프록시의 특징은 다음과 같다.
+
+- 프록시 객체는 처음 사용할 때 한 번만 초기화 된다.
+
+- 프록시 객체를 초기화 할 떈 프록시 객체가 실제 Entity 로 바뀌는 게 아닌 참조를 통해서 동작한다.
+
+- 프록시 객체는 원본 Entity 를 상속받는 상태이므로 타입 체크시 `==` 대신 `instance of` 을 사용하는 것이 좋다.
+
+  - 영속성 컨택스트에 이미 Entity 가 캐싱되어 있다면 `em.getReference()` 하더라도 실제 Entity 가 반환된다.
+  
+  - 영속성 컨택스트가 관리하는 객체가 아니라면 (if detached) 라면 이때 프록시 객체를 초기화 하려면 `LazyInitializationException` 예외가 발생한다.
+
+***
+
+## 즉시 로딩과 지연 로딩
+
+Member Entity 와 Team Entity 가 있고 이 관계는 N:1 이라고 가정해보자.
+
+비즈니스 로직 상에서 Member 를 조회하는데 Team 까지 같이 조회가 된다면 성능상에서 손해다. 
+
+그러므로 이를 지연 로딩으로 가져오도록 설정해놓는게 낫다. 그러면 연관되어 있는 객체를 프록시로 되어있고 실제 사용이 필요한 시점에 쿼리를 날려서 가지고 올 것이다.
+
+실무에서는 가급적 지연 로딩만 사용하는게 권장된다. JPA 에서 `ManyToOne` 과 `OneToMany` 는 기본 값이 즉시 로딩이므로 지연 로딩을 써서 설정하는게 좋다.
+
+***
+ 
 
