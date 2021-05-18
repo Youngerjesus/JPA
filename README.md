@@ -8,11 +8,13 @@
 [2. 왜 JPA 를 사용해야 하는가](#왜-JPA-를-사용해야-하는가) <br/>
 [3. JPA 구동 방식](#JPA-구동-방식) <br/>
 [4. Entity 매핑](#Entity-매핑) <br/>  
-[5. 상속관계 매핑](#상속관계-매핑) <br/> 
-[6. MappedSuperclass](#MappedSuperclass) <br/> 
-[7. 프록시와 연관관계](#프록시와-연관관계) <br/> 
-[8. 즉시 로딩과 지연 로딩](#즉시-로딩과-지연-로딩) <br/> 
-
+[5. 기본 Key 매핑](#기본-Key-매핑) <br/> 
+[6. 상속관계 매핑](#상속관계-매핑) <br/> 
+[7. MappedSuperclass](#@MappedSuperclass) <br/> 
+[8. 프록시와 연관관계](#프록시와-연관관계) <br/> 
+[9. 즉시 로딩과 지연 로딩](#즉시-로딩과-지연-로딩) <br/>
+[10. 영속성 전이](#영속성-전이)
+[11. 고아 객체](#고아-객체)
 ***
 
 ## JPA 란
@@ -113,7 +115,7 @@ Flush 란 영속성 컨택스트의 변경 내용을 DB에 반영하는 걸 말�
 
 ***
 
-## Entity 매팡
+## Entity 매핑
 
 #### 객체와 테이블 매핑
 
@@ -202,7 +204,58 @@ DB의 BLOB, CLOB 타입과 매핑된다. 이 에노테이션에는 별도로 지
 
 ***
  
+## 기본 Key 매핑 
 
+Entity 를 식별할 수 있는 Key 를 매핑할 때 사용할 수 있는 에노테이션으로 (@Id, @GeneratedValue) 를 쓰는 전략이 있다. 
+
+기본 키 직접 매핑 방법은 직접 Id 를 할당해주기 위해서 @Id 만 쓰고 @GeneratedValue 를 쓰지 않는 방법이 있고 
+
+자동으로 ID 를 생성하는 방법으로 @GeneratedValue 에는 여러가지 전략이 있다.
+
+- `GenerationType.IDENTITY`  
+  
+  - 기본 키 생성을 데이터베이스에 위임한다. MySQL 에 AUTO_INCREMENT 와 같다. 
+  
+  - 다만 여기서 문제는 해당 Entity 를 DB에 저장하기 전까지 기본 Key를 알 수 없다는 점이다. JPA는 트랜잭션을 commit 하기 전까지 1차 캐시에 Entity를 보관하는데 IDENTITY 전략으로 Key가 자동 생성 된다면
+  
+  commit 전까지 키를 알 수 없어서 1차 캐시를 적극적으로 활용할 수 없다. (1차 캐시는 Id를 키로 Entity를 매핑하기 떄문에) 따라서 이 전략으로 설정한 경우 예외적으로 persist() 메소드를 호출한다면 바로 SQL문을 내보내서 Key를 받아온다.
+  
+- `GenerationType.SEQUENCE`
+  
+  - Oracle 데이터베이스에서 사용하는 방법이다 이 전략도 DB에서 관리하므로 DB에 직접 가야지 Id 값을 나와야 한다. 차이점은 insert 쿼리를 날리는게 아니라 Sequence 를 얻기 위해서 DB에 접근한다.
+  
+  - 그리고 또 다른 차이점은 @SequenceGenerator 에 있는 allocationSize 인데. 이는 Sequence 값을 매번 가지고 오는게 아니라 이 사이즈 만큼 값을 가지고 오고 메모리에 저장해둔다. 그리고 이 값을 다 쓰면 새로 DB에 접근해서 가지고 오는 방식을 적용한다. 
+    
+  - 예제는 다음과 같다. 
+  
+```java
+  
+@Entity
+@SequenceGenerator(
+        name = "MEMBER_SEQ_GENERATOR",
+        sequenceName = "MEMBER_SEQ",
+        initialValue = 1,
+        allocationSize = 1
+)
+public class Member {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "MEMBER_SEQ_GENERATOR")
+    Long id;
+
+    String name;
+} 
+```
+
+- `GenerationType.TABLE`
+
+  - 키 생성 전용 테이블을 하나 만들어서 데이터베이스 시퀸스를 흉내내는 전략 
+  
+  - 장점으로는 모든 데이터베이스에 적용이 가능하지만 테이블을 별도로 사용하니까 성능으로는 안나온다.   
+
+- `GenerationType.AUTO`
+
+  - DB에 맞춰서 자동으로 생성해주는 것 Oracle 이면 SEQUENCE 로 MySQL 이면 IDENTITY 로 만들어준다. 
 
 ***
 
@@ -362,5 +415,43 @@ Member Entity 와 Team Entity 가 있고 이 관계는 N:1 이라고 가정해�
 실무에서는 가급적 지연 로딩만 사용하는게 권장된다. JPA 에서 `ManyToOne` 과 `OneToMany` 는 기본 값이 즉시 로딩이므로 지연 로딩을 써서 설정하는게 좋다.
 
 ***
+ 
+## 영속성 전이 
+
+특정 엔터티를 영속 상태로 만들 때 연관된 엔터티도 함께 영속 상태로 만들고 싶을 때 사용한다.
+
+영속성 전이는 연관관계를 매핑하는 것과 아무 관련이 없다. 엔터티를 영속화할 때 연관된 엔터티도 함께 영속화하는 편리함만 제공해준다. 
+
+영속성 전이는 하나의 부모가 자식들을 관리할 때 의미가 있다. 게시판에 하나의 글이 첨부 파일을 관리하는 경우 하지만 관리하는 곳이 여러 곳이 있다면 쓰면 안된다.  
+
+단일 엔터티에 완전히 종속적일때 사용한다. 
+
+종류는 다음과 같다. 
+
+- CascadeType.All
+
+- CascadeType.PERSIST
+
+- CascadeType 
+
+ 
+```java
+import javax.persistence.CascadeType;import javax.persistence.OneToMany;
+
+@OneToMany(mappedBy = "parent", cascade = CascadeType.PERSIST) 
+```
+
+***
+
+## 고아 객체
+
+부모 엔터티와 연관관계가 끊어진 자식 엔터리를 자동으로 삭제하는 기능이다. 
+
+```java
+import javax.persistence.CascadeType;import javax.persistence.OneToMany;
+
+@OneToMany(mappedBy = "parent", cascade = CascadeType.PERSIST, orphanRemoval = true) 
+```
+
  
 
