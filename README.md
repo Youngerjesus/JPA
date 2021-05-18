@@ -6,11 +6,12 @@
 
 [1. JPA 란](#JPA-란) <br/>
 [2. 왜 JPA 를 사용해야 하는가](#왜-JPA-를-사용해야-하는가) <br/>
-[3. JPA 구동 방식](#JPA-구동-방식) <br/> 
-[4. 상속관계 매핑](#상속관계-매핑) <br/> 
-[5. MappedSuperclass](#MappedSuperclass) <br/> 
-[6. 프록시와 연관관계](#프록시와-연관관계) <br/> 
-[7. 즉시 로딩과 지연 로딩](#즉시-로딩과-지연-로딩) <br/> 
+[3. JPA 구동 방식](#JPA-구동-방식) <br/>
+[4. Entity 매핑](#Entity-매핑) <br/>  
+[5. 상속관계 매핑](#상속관계-매핑) <br/> 
+[6. MappedSuperclass](#MappedSuperclass) <br/> 
+[7. 프록시와 연관관계](#프록시와-연관관계) <br/> 
+[8. 즉시 로딩과 지연 로딩](#즉시-로딩과-지연-로딩) <br/> 
 
 ***
 
@@ -110,6 +111,100 @@ Flush 란 영속성 컨택스트의 변경 내용을 DB에 반영하는 걸 말�
 3. 요청이 완료될 때(트랜잭션이 끝날 때) EntityManger 를 소멸시킨다.
 
 
+***
+
+## Entity 매팡
+
+#### 객체와 테이블 매핑
+
+- `@Entity` 가 붙은 클래스는 JPA가 관리하고 DB 테이블과 매핑된다. Entity 의 경우 기본 생성자가 필수이고 final 과 같은 키워드가 있으면 안된다. 
+
+- `@Table` 에노테이션을 통해 Entity 와 매핑할 테이블을 지정할 수 있다. 기본 값은 Entity의 이름이다.  
+
+#### Field 와 Column 매핑
+
+Entity 의 Field 와 DB의 Column 을 매핑할 때 사용하는 여러 에노테이션과 속성이 있다.
+
+예제는 다음과 같다. 
+
+```java
+import javax.persistence.*;import java.time.LocalDateTime;import java.util.Date;
+
+@Entity
+@Table(name = "MEMBER")
+public class Member{
+    @Id @GeneratedValue
+    private Long id; 
+    
+    @Column(name = "name", nullable = false)
+    private String username;
+    
+    private Integer age; 
+    
+    @Enumerated(EnumType.STRING)
+    private RoleType roleType; 
+
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date createdDate;
+    
+    private LocalDateTime lastModifiedDate;
+    
+    @Lob
+    private String description;
+
+    @Transient
+    private int temp;
+}
+```
+
+#### @Column
+
+|          속성          |                  설명                   |           기본값           |
+| :--------------------: | :-------------------------------------: | :------------------------: |
+|          name          |   Field와 매핑할 테이블의 Column 이름   |     객체의 Field 이름      |
+| Insertable / updatable |          등록 / 변경 가능 여부          |            true            |
+|     nullable(DDL)      |        Null 값 허용 여부를 결정         |            true            |
+|      unique(DDL)       | 하나의 Column에 unique 제약 조건을 설정 |                            |
+| columnDefinition(DDL)  |       DB Column 정보를 직접 입력        |                            |
+|      length(DDL)       | String 타입의 문자 길이 제약 조건 설정  |            255             |
+|   precision / scale    |   BigDecimal 타입의 표현 정도를 설정    | precision = 19 / scale = 2 |
+
+
+#### @Temporal
+
+자바 날짜 타입을 매핑할 때 사용한다. 
+
+최근에는 `LocalDate` 나 `LocalDateTime` 타입을 사용하면 하이버네이트가 지원해주기 떄문에 이 에노테이션을 생략할 수 있다.
+
+| 속성  | 설명                                                         |
+| :---: | :----------------------------------------------------------- |
+| value | - TemporalType.DATA: 날짜로 DB의 `date` 와 매핑된다. (ex. 2021-02-21)<br />- TemporalType.TIME: 시간으로 DB의 `time` 와 매핑된다. (ex. 08:55:42) <br />- TemporalType.TIMESTAMP: 날짜와 시간으로 DB의 `timestampe` 와 매핑된다. (ex. 2021-01-04 08:55:42) |
+
+
+#### @Enumerated
+
+자바 `enum` 타입을 매핑할 때 사용한다. 다만 미래에 추가될 요소를 대비해서 공간을 더 쓰더라도 `EnumType.STRING` 을 사용하는 걸 추천한다.
+
+| 속성  | 설명                                                         |      기본값       |
+| :---: | :----------------------------------------------------------- | :---------------: |
+| value | - EnumType.ORIGINAL: `enum` 순서를 DB에 저장한다 <br />- EnumType.STRING: `enum` 이름을 DB에 저장한다. | EnumType.ORIGINAL |
+
+
+#### @Lob
+
+DB의 BLOB, CLOB 타입과 매핑된다. 이 에노테이션에는 별도로 지정할 수 있는 속성이 없다. 
+
+매핑하는 Field 타입이 문자라면 CLOB 이고 나머지는 BLOB 으로 매핑된다.
+
+#### @Transient
+
+주로 메모리상에서 임시로 어떤 값을 보관하고 싶은 경우에 매핑은 하고 싶지 않은 경우에 Field 위에다 이 에노테이션을 붙이면 된다. 
+
+***
+ 
+
+
+***
 
 ## 상속관계 매핑 
 
@@ -200,6 +295,8 @@ public class BaseEntity{
 @Entity
 public class Member extends BaseEntity{...}
 ````
+
+***
 
 ## 프록시와 연관관계 
 
