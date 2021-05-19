@@ -7,7 +7,7 @@
 [1. JPA 란](#JPA-란) <br/>
 [2. 왜 JPA 를 사용해야 하는가](#왜-JPA-를-사용해야-하는가) <br/>
 [3. JPA 구동 방식](#JPA-구동-방식) <br/>
-[4. Entity 매핑](#Entity-매핑) <br/>  
+[4. Entity 매핑](#Entity-매핑) 
 [5. 기본 Key 매핑](#기본-Key-매핑) <br/> 
 [6. 상속관계 매핑](#상속관계-매핑) <br/> 
 [7. MappedSuperclass](#@MappedSuperclass) <br/> 
