@@ -1,4 +1,4 @@
-package com.example.demo.value_type;
+package com.example.demo.value_type.embedded;
 
 import javax.persistence.Embeddable;
 import java.time.LocalDateTime;

@@ -1,10 +1,9 @@
-package com.example.demo.value_type;
+package com.example.demo.value_type.embedded;
 
 import javax.persistence.Embedded;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
-import java.time.LocalDateTime;
 
 @Entity
 public class Member {

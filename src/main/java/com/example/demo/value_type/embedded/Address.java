@@ -1,4 +1,4 @@
-package com.example.demo.value_type;
+package com.example.demo.value_type.embedded;
 
 import javax.persistence.Embeddable;
 
@@ -7,6 +7,14 @@ public class Address {
     private String city;
     private String zipCode;
     private String street;
+
+    public Address(){}
+
+    public Address(String city, String zipCode, String street) {
+        this.city = city;
+        this.zipCode = zipCode;
+        this.street = street;
+    }
 
     public String getCity() {
         return city;
