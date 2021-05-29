@@ -10,7 +10,7 @@
 [4. Entity 매핑](#Entity-매핑) <br/>
 [5. 기본 Key 매핑](#기본-Key-매핑) <br/> 
 [6. 상속관계 매핑](#상속관계-매핑) <br/> 
-[7. MappedSuperclass](#@MappedSuperclass) <br/> 
+[7. @MappedSuperclass](#@MappedSuperclass) <br/> 
 [8. 프록시와 연관관계](#프록시와-연관관계) <br/> 
 [9. 즉시 로딩과 지연 로딩](#즉시-로딩과-지연-로딩) <br/>
 [10. 영속성 전이](#영속성-전이) <br/> 
